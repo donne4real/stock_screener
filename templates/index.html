@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graham Stock Screener</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Benjamin Graham Stock Screener</h1>
+        <p>This tool screens S&P 500 stocks based on a simplified set of Benjamin Graham's investment criteria.</p>
+        <button id="run-screener-btn">Run Screener</button>
+        <div id="loading" style="display: none;">
+            <p>Screening in progress... This may take a few minutes. Please wait.</p>
+        </div>
+        <div id="results">
+            <h2>Results</h2>
+            <div id="summary"></div>
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Passed All</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Results will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        document.getElementById('run-screener-btn').addEventListener('click', () => {
+            const loadingDiv = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+            const tableBody = document.querySelector('#results-table tbody');
+
+            // Show loading indicator and hide previous results
+            loadingDiv.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            tableBody.innerHTML = '';
+            summaryDiv.innerHTML = '';
+
+            fetch('/run_screener')
+                .then(response => response.json())
+                .then(data => {
+                    loadingDiv.style.display = 'none';
+                    resultsDiv.style.display = 'block';
+
+                    if (data.error) {
+                        summaryDiv.innerHTML = `<p class="error">${data.error}</p>`;
+                        return;
+                    }
+
+                    const passingCount = data.passing_stocks.length;
+                    summaryDiv.innerHTML = `<p><strong>Screening complete. Found ${passingCount} stocks that passed all criteria.</strong></p>`;
+
+                    data.all_results.forEach(stock => {
+                        const row = document.createElement('tr');
+
+                        let detailsHtml = '<ul>';
+                        if (stock.error) {
+                            detailsHtml += `<li><strong>Error:</strong> ${stock.error}</li>`;
+                        } else {
+                            for (const [filter, result] of Object.entries(stock.filters)) {
+                                detailsHtml += `<li><strong>${filter.replace(/_/g, ' ')}:</strong> ${result.passed ? 'PASS' : 'FAIL'} - ${result.reason}</li>`;
+                            }
+                        }
+                        detailsHtml += '</ul>';
+
+                        row.innerHTML = `
+                            <td>${stock.ticker}</td>
+                            <td class="${stock.passed_all ? 'pass' : 'fail'}">${stock.passed_all ? 'Yes' : 'No'}</td>
+                            <td>${detailsHtml}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    loadingDiv.style.display = 'none';
+                    summaryDiv.innerHTML = `<p class="error">An error occurred: ${error.message}</p>`;
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</body>
+</html>
