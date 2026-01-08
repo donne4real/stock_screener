@@ -4,3 +4,5 @@ numpy
 openpyxl
 Flask
 lxml
+yahoo_fin
+lxml_html_clean
